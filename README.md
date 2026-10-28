@@ -32,6 +32,24 @@ Every attendance entry stores **who** (student, LRN, gender, section), **when**
 
 ## Quick start
 
+### Option A — GitHub Codespaces (no Docker on your machine)
+
+The repo ships a devcontainer with Docker-in-Docker, so the whole stack runs in
+the cloud. **Full procedure and the six non-negotiable rules:
+[`docs/codespace.md`](docs/codespace.md).**
+
+```bash
+# 1. Code ▾ → Codespaces → Create codespace on main   (choose 4-core if offered)
+# 2. in the Codespace terminal:
+bash scripts/codespace-setup.sh   # deps + Supabase + .env.local + admin
+npm run dev                       # then open the forwarded port 3000 URL
+```
+
+Sign in with `admin@school.test` / `admin12345`. Keep ports 54321–54323
+**Private** — they reach the database directly.
+
+### Option B — Local Docker Desktop
+
 Prerequisites: Node 20+, Docker Desktop running.
 
 ```bash
@@ -72,6 +90,7 @@ Full walkthrough, screenshots checklist and troubleshooting: `docs/demo-setup.md
 | `npm run db:reset` | Re-apply migrations + seed (`supabase db reset`) |
 | `npm run admin:create` | Create/reset the admin user via service role |
 | `npm run verify:schema` | Run the real migration + seed in an in-process Postgres and assert triggers/constraints (no Docker needed) |
+| `bash scripts/codespace-setup.sh` | Codespaces/devcontainer one-shot setup: deps → Supabase → `.env.local` → admin |
 
 ## Project structure
 

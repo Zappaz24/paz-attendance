@@ -11,6 +11,7 @@
 | `prompts.md` | Verbatim prompts, interview answers, build log, corrections |
 | `review.md` | Two-axis code review + residual risks |
 | `demo-setup.md` | Install Docker/Supabase, run, demo script, troubleshooting |
+| `codespace.md` | **Run everything in GitHub Codespaces** (no local Docker), including the six non-negotiable rules |
 | `defense-qa.md` | 16 rehearsal questions + grading map |
 | `adr/` | Three decisions with trade-offs |
 

@@ -23,6 +23,7 @@ npm run build          # production build (session routes must stay ƒ)
 npm run verify:schema  # run migration+seed in in-process Postgres (no Docker)
 npm run db:reset       # supabase db reset (needs Docker)
 npm run admin:create   # provision admin (needs .env.local)
+bash scripts/codespace-setup.sh  # Codespaces one-shot: deps + Supabase + env + admin
 ```
 
 ## Conventions

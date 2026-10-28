@@ -1,0 +1,62 @@
+{
+  "name": "PAZ Attendance — Next.js 16 + Supabase",
+
+  // Plain Ubuntu base + explicit features, so the Docker + Node requirements
+  // are visible in the repo instead of hidden in a prebuilt image.
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu-24.04",
+
+  "features": {
+    // Node 22 is required: scripts use --env-file / --env-file-if-exists.
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "22"
+    },
+    // Gives the container its own Docker daemon so `supabase start` works
+    // (Supabase runs Postgres, Auth, PostgREST, Studio... as containers).
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {
+      "version": "latest",
+      "moby": true
+    },
+    "ghcr.io/devcontainers/features/github-cli:1": {}
+  },
+
+  // Supabase's local stack + the Next.js dev server.
+  "forwardPorts": [3000, 54321, 54322, 54323, 54324],
+
+  "portsAttributes": {
+    "3000": {
+      "label": "PAZ Attendance (Next.js)",
+      "onAutoForward": "openPreview"
+    },
+    "54321": {
+      "label": "Supabase API — KEEP PRIVATE",
+      "onAutoForward": "silent"
+    },
+    "54322": {
+      "label": "Postgres — KEEP PRIVATE",
+      "onAutoForward": "silent"
+    },
+    "54323": {
+      "label": "Supabase Studio — KEEP PRIVATE",
+      "onAutoForward": "silent"
+    },
+    "54324": {
+      "label": "Mailpit (unused: sign-up disabled)",
+      "onAutoForward": "silent"
+    }
+  },
+
+  // Dependencies only. The Supabase stack is started explicitly, because the
+  // first run pulls ~10 images (~3-8 minutes) and should not block VS Code.
+  "postCreateCommand": "npm ci",
+
+  "postStartCommand": "echo 'PAZ Attendance: run  bash scripts/codespace-setup.sh  to start Supabase + create the admin.'",
+
+  "remoteUser": "vscode",
+
+  // 2-core is the free-tier default; 4-core is faster for Supabase. Nothing
+  // here breaks on 4-core, so the machine size stays a user choice.
+  "hostRequirements": {
+    "memory": "8gb",
+    "storage": "32gb"
+  }
+}
