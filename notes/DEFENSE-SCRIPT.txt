@@ -1,0 +1,486 @@
+================================================================================
+ PAZ ATTENDANCE - WS101 SEMI-FINAL DEFENSE SCRIPT
+================================================================================
+ How to use this file:
+   - Bullets marked [SHOW] = what must be on screen.
+   - Bullets marked [DO]   = the click or command.
+   - Bullets marked [SAY]  = say it close to this wording, not memorised.
+   - Bullets marked [OPEN] = file to have ready in the editor.
+   - Bullets marked [IF ASKED] = only answer when the panel asks.
+ Read it twice the night before, once in the room. Do not read it on stage.
+
+ Grading source: Guidelines-WS101-Agentic-Full-Stack-Defense-1.pdf
+   Full-Stack Application & Live Demo ............. 25
+   Next.js, Supabase & Docker Architecture ....... 15
+   Matt Pocock Skills & Generated Artifacts ...... 20
+   Agentic Development Workflow & Decisions ...... 15
+   Code Walkthrough, Defense & Q&A ............... 15
+   Database, Security & Code Quality ............. 10
+   TOTAL ......................................... 100
+
+ The PDF's required stack, all true here:
+   - Next.js (application routes, UI components, server-side logic) .......... YES
+   - Supabase SELF-HOSTED, RUNNING WITH DOCKER ............................... YES
+   - A coding agent (OpenCode) ................................................ YES
+   - Matt Pocock skills repo .................................................. YES (12 skills)
+
+
+================================================================================
+ 0. PRE-FLIGHT - 10 MINUTES BEFORE
+================================================================================
+ [DO] 1. Start Docker Desktop. Wait for the whale to stop animating.
+ [DO] 2. cd C:\Users\User\Desktop\PAZ
+          npx supabase start
+          (if already running: npx supabase status)
+ [DO] 3. Leave the local stack ON. Do not demo against the hosted project.
+ [DO] 4. npm run dev        -> leave this window OPEN, it is your proof of build.
+ [DO] 5. Browser tabs, in this order:
+          tab 1  http://localhost:3000/login        (signed out)
+          tab 2  http://127.0.0.1:54323             (Studio)
+          tab 3  https://github.com/Zappaz24/paz-attendance
+ [DO] 6. Editor tabs open: proxy.ts, lib/auth.ts, lib/queries.ts,
+          actions/attendance.ts, lib/validation.ts,
+          supabase/migrations/20261028000000_init.sql
+ [DO] 7. Close every tab that shows a key: no .env.local, no Studio Settings,
+          no Dashboard API Keys. Rule from the PDF: no credentials on screen.
+ [DO] 8. Backup within reach: the 3-minute recording and the screenshots folder.
+
+ [SAY] "If we lose the network, I have a recording and screenshots. I'd rather
+        show it live."
+
+
+================================================================================
+ 1. RUN OF SHOW - 12 MINUTES (compress to 6 if you are cut short)
+================================================================================
+   0:00 - 1:00   Part 1  Introduction ....................... touches 25 + 15
+   1:00 - 4:30   Part 2  Live demo ......................... 25 points
+   4:30 - 6:30   Part 3  Architecture (Next.js/Supabase/Docker) 15 points
+   6:30 - 9:00   Part 4  Agentic workflow + Matt Pocock skills  20 + 15 points
+   9:00 - 11:00  Part 5  Code walkthrough .................. 15 points
+  11:00 - 12:00  Part 6  Database + security summary ....... 10 points
+  12:00 +        Q&A
+
+ 6-MINUTE CUT: Parts 1, 2 (skip students CRUD, keep attendance), 3 (docker ps
+ only), 4 (skills table + one bug story), 6 (RLS demo). Skip Part 5 entirely and
+ say "I can open any file you name."
+
+
+================================================================================
+ PART 1 - INTRODUCTION (1 minute)                      [rubric: demo 25 + arch 15]
+================================================================================
+ [SHOW] Dashboard, signed in.
+
+ [SAY] "This is PAZ Attendance. It is a school attendance system for one admin -
+        the class adviser - who needs to record who is present each day and get
+        an honest timestamp for it."
+
+ [SAY] "Three things it does: a student roster with LRN, gender and section; a
+        daily attendance sheet with four statuses; and reports that show
+        attendance rate."
+
+ [SAY] "Stack: Next.js 16 App Router, React 19, server actions, Supabase - which
+        is Postgres, Auth, and Row Level Security - running self-hosted in Docker
+        on this laptop. Data layer typed in TypeScript, validation in Zod."
+
+ [SAY] "Built with OpenCode as the coding agent, using Matt Pocock's skills repo.
+        I'll show exactly what the skills did and did not do."
+
+ [DO] Point at the four numbers: 12 students, 3 sections, 0 present, 12 unmarked.
+ [SAY] "These are live queries, not constants. Nothing on this screen is hardcoded."
+
+ DO NOT SAY: "the AI built it for me." Say "I built it with an agent, and here is
+ how I directed and verified it."
+
+
+================================================================================
+ PART 2 - LIVE DEMO (3.5 minutes)                                [25 points]
+================================================================================
+ --- 2.1 Sign in (30 s) --------------------------------------------------------
+ [SHOW] /login
+ [SAY]  "There is no sign-up page, on purpose. Accounts are provisioned, not
+         self-registered. Locally, sign-up is disabled in config.toml; on the
+         hosted copy the auth provider returns 422 signup_disabled."
+ [DO]   Sign in: admin@school.test / admin12345
+ [SAY]  "That is a real Supabase Auth session in an HTTP-only cookie, not a
+         hardcoded password check."
+
+ --- 2.2 Students - create, validate, edit (90 s) ------------------------------
+ [DO]   Students -> Add student
+ [DO]   Name "Test Student", LRN "123" -> Save
+ [SHOW] Red field error, no row created.
+ [SAY]  "LRN must be 12 digits. Zod rejects it on the server, and the same rule
+         exists as a CHECK constraint in Postgres, so a direct API call cannot
+         sneak it in either."
+ [DO]   LRN "123456789012" -> Save
+ [SHOW] Row appears in the roster.
+ [DO]   Type part of the name in search -> roster filters.
+ [DO]   Edit that student -> change section -> Save
+ [SHOW] Section updated, flash message.
+ [SAY]  "Every write goes through a server action: authorize, validate, write,
+         then revalidate the path. The page re-renders on the server."
+
+ --- 2.3 Attendance - the important part (90 s) --------------------------------
+ [DO]   Attendance -> Grade 7
+ [DO]   Click "Present" on one student
+ [SHOW] Time in column fills with a clock time.
+ [SAY]  "I never sent a time. The insert only says status = present. A database
+         trigger stamps now() server-side. A browser cannot fake the clock."
+
+ [DO]   Click "Present" on the SAME student again
+ [SHOW] Status stays, timestamp does NOT change.
+ [SAY]  "Re-clicking is idempotent. The write is an upsert on the unique pair
+         student + date, and the trigger only stamps when time_in is null."
+
+ [DO]   Click "Absent" on that student
+ [SHOW] Timestamp clears, badge turns red.
+ [SAY]  "Switching to absent clears the clock, so an absent student never has a
+         check-in time. That is enforced in the trigger, not in the UI."
+
+ [DO]   Use "Mark all present" on one section
+ [SHOW] Whole sheet fills.
+ [SAY]  "One action, one revalidation, one re-render."
+
+ --- 2.4 Reports (20 s) --------------------------------------------------------
+ [DO]   Reports
+ [SHOW] Rate bars, class average.
+ [SAY]  "Rates are computed from the same attendance rows - no separate numbers
+         to drift out of sync."
+
+ --- 2.5 Prove it hit the database (20 s) --------------------------------------
+ [DO]   Switch to Studio tab -> Table Editor -> attendance_records
+ [SHOW] The rows you just made, time_in populated.
+ [SAY]  "Same data, seen from inside Postgres. This is the 'actual database
+         change' the guidelines ask for."
+
+ DO NOT: delete the test student on stage unless asked - do it after. Leaving one
+ extra student is fine; just know it is there.
+
+
+================================================================================
+ PART 3 - ARCHITECTURE: NEXT.JS, SUPABASE, DOCKER (2 minutes)     [15 points]
+================================================================================
+ --- 3.1 Next.js structure (45 s) ----------------------------------------------
+ [OPEN] app/ tree in the editor
+ [SAY] "App Router. `app/(app)/*` are the signed-in screens - dashboard, students,
+        sections, attendance, reports. `app/login` and `app/setup` sit outside
+        that group."
+
+ [SAY] "Server Components by default. `use client` appears only on forms, nav,
+        and confirm dialogs, because those need browser state."
+
+ [OPEN] proxy.ts
+ [SAY] "Next 16 renamed middleware to proxy. It refreshes the Supabase session
+        cookie on every request and bounces signed-out visitors. It is optimistic
+        only - the real gate is requireAdmin() in the pages and actions."
+
+ --- 3.2 Request flow - reads (30 s) -------------------------------------------
+ [SAY] "Read path: browser -> proxy.ts -> Server Component page -> requireAdmin()
+        -> lib/queries.ts -> supabase-js with the session cookie -> Kong on
+        :54321 -> PostgREST -> Postgres with RLS applied -> HTML back."
+
+ [SAY] "Pages never build SQL. Every read is one function in lib/queries.ts. That
+        is the one deep module - it means the query shape is reviewable in one
+        file instead of scattered across screens."
+
+ --- 3.3 Request flow - writes (25 s) ------------------------------------------
+ [SAY] "Write path: form -> Server Action -> requireAdmin() -> Zod -> Postgres
+        (trigger + constraint + RLS) -> revalidatePath -> server re-render."
+
+ [SAY] "No hand-written API routes. The server action IS the endpoint, and it is
+        typed end to end."
+
+ --- 3.4 Docker (30 s) ---------------------------------------------------------
+ [DO]   Terminal: docker ps
+ [SHOW] supabase_db / kong / auth / rest / studio / storage / realtime / ...
+ [SAY]  "Supabase is self-hosted in Docker: twelve containers. Postgres 17 is
+         supabase_db, Kong is the API gateway on 54321, GoTrue is auth,
+         PostgREST turns tables into REST, Studio is the dashboard on 54323."
+
+ [SAY]  "supabase start reads config.toml, applies the migration, seeds demo
+         data, and wires everything on one private network. `supabase db reset`
+         drops the database and replays the migration from empty - I ran it
+         before this session, which is why I can claim the schema is reproducible."
+
+ [IF ASKED] "Show the migration applying" -> do NOT run reset live: it deletes
+            the admin user. Say so honestly.
+
+ [OPEN] supabase/config.toml  (safe: no keys in it)
+ [SAY]  "Ports, the Postgres major version, and above all enable_signup = false."
+
+
+================================================================================
+ PART 4 - AGENTIC WORKFLOW + MATT POCOCK SKILLS (2.5 min)   [20 + 15 points]
+================================================================================
+ The PDF is explicit: do not claim a skill generated files if it did not, and
+ distinguish agent-generated / skill-guided / you-verified. Follow that exactly.
+
+ --- 4.1 The workflow, in order (40 s) -----------------------------------------
+ [SAY] "Sequence: requirements -> interview -> spec -> tickets -> implementation
+        -> review -> fixes. Not 'prompt once, accept output'."
+
+ [SAY] "The PDF gave the constraints. Before any code, the agent interviewed me
+        with the grilling skill, four questions: how deep, which backend, who
+        logs in, how to proceed. My answers fixed the scope: basic attendance,
+        local Supabase in Docker, one admin role."
+
+ [IF ASKED] "Show it" -> docs/prompts.md section 2 is the verbatim Q&A.
+
+ --- 4.2 The 12 installed skills (40 s) ----------------------------------------
+ [DO]   Open .opencode/skills/ so the folder of SKILL.md files is visible.
+ [SAY]  "Twelve Matt Pocock skills are installed in the repo and OpenCode
+         discovers them automatically. The ones that changed decisions:"
+
+ [SAY]  "grilling / grill-with-docs - forced the four scope questions before code.
+         to-spec - turned the PDF plus my answers into docs/spec.md with explicit
+         non-goals. to-tickets - gave tracer-bullet tickets with the honest status
+         of each. codebase-design - is why reads live in one deep module. 
+         domain-modeling - fixed the vocabulary. code-review - produced the
+         two-axis review that found real bugs. writing-for-agents - shaped
+         AGENTS.md and README so the next agent can find the verify commands."
+
+ [SAY] "one skill I did NOT use is tdd. There is no automated test suite, and my
+        tickets file records T9 as open. I'd rather say that than be caught."
+
+ --- 4.3 What was who's (30 s) -------------------------------------------------
+ [SAY] "Agent-generated: the schema, queries, actions, UI, and the first drafts of
+        the docs. Skill-guided: the process and the artifacts - the interview,
+        the spec and ticket formats, the module boundary, the review checklist.
+        Mine: the scope decisions, and the verification - I ran the build, the
+        typecheck, the lint, the schema check, and I clicked through every screen.
+        A skill never wrote a file on its own."
+
+ --- 4.4 Bugs and wrong AI output - have two ready (40 s) ---------------------
+ [SAY] "Two from review: session pages were being prerendered as static when
+        .env.local was absent at build time - fixed with force-dynamic and a
+        cached requireAdmin(). And the proxy could crash if Supabase was
+        unreachable - getUser() is now wrapped in try/catch."
+
+ [SAY] "Two from the hosted test run, which are better stories: sign-in returned
+        500 'Database error querying schema'. The user row existed; GoTrue simply
+        cannot scan NULL into a string. Creating a user by SQL skips the token
+        column defaults the dashboard writes. Fix: normalise those columns, then
+        proved it by logging in through the API."
+
+ [SAY] "Second: after moving to the local stack, sign-in failed with 422
+        email_provider_disabled. The CLI maps [auth.email] enable_signup = false
+        to 'email provider off', not 'signups off'. Correct fix: keep the provider
+        on, block registration with the global [auth] enable_signup = false. That
+        is why the config now has a comment explaining it."
+
+ [SAY] "Both bugs were found by testing, not by reading the code. That is the
+        workflow: the agent's output is a proposal until it runs."
+
+ [DO]   Optionally open docs/review.md to show the corrections list.
+
+
+================================================================================
+ PART 5 - CODE WALKTHROUGH (2 minutes)                            [15 points]
+================================================================================
+ Open files in this order. One sentence each - the panel wants to see you know
+ where things are, not recite them.
+
+ 1. lib/auth.ts
+    "requireAdmin(): reads the Supabase user, loads their profile row, and
+     redirects unless role = admin. Wrapped in React cache() so a page and its
+     child components don't each re-query."
+
+ 2. lib/queries.ts
+    "Every read in the app. Returns typed rows. No page builds a Supabase query."
+
+ 3. lib/validation.ts
+    "Zod schemas shared by every action: LRN 12 digits, name length, gender enum,
+     section id, attendance status. One source of truth for field rules."
+
+ 4. actions/attendance.ts
+    "The attendance action: authorize, validate, upsert on student + date, then
+     revalidatePath. It deliberately does not send time_in - the database owns
+     the clock."
+
+ 5. lib/supabase/server.ts
+    "The server client reads and writes the auth cookie through Next's cookies()
+     API, which is why the session survives a refresh."
+
+ 6. agent-generated UI
+    "app/(app)/attendance/page.tsx - a Server Component that loads the roster and
+     today's rows, then renders the sheet. The client component underneath only
+     handles form state."
+
+ 7. supabase/migrations/20261028000000_init.sql
+    "The whole database in one file: four tables, two enums, indexes, three
+     triggers, is_admin(), and four RLS policies."
+
+ 8. proxy.ts
+    "Session refresh + optimistic redirect. Not the authorization boundary."
+
+ CLOSING LINE for this part:
+ [SAY] "Any file you name, I can open. The layout is: reads in lib, writes in
+        actions, rules in validation, guarantees in SQL."
+
+
+================================================================================
+ PART 6 - DATABASE + SECURITY SUMMARY (1 minute)                  [10 points]
+================================================================================
+ [OPEN] docs/erd.md  (or draw it on the board while talking)
+
+ [SAY] "Four tables. sections 1-to-many students. students 1-to-many
+        attendance_records. profiles is one row per auth user, and
+        attendance_records.recorded_by points at it."
+
+ [SAY] "Constraints that matter: LRN is 12 digits and unique; attendance is
+        unique per student per day; present or late cannot exist without time_in;
+        deleting a student cascades their attendance."
+
+ [SAY] "Access control is in three layers. proxy.ts refreshes the session and
+        redirects - optimistic. requireAdmin() is the real check in every page and
+        action. And RLS denies rows at the database even if someone bypasses the
+        UI with the anon key."
+
+ [DO]   Studio -> SQL editor:  select * from pg_policies;
+ [SHOW] 4 policies, all is_admin() except "read own profile".
+ [SAY]  "Four tables, RLS enabled on all four, four policies. is_admin() is
+         security definer with a fixed search_path - otherwise the policy's own
+         lookup would be filtered by RLS and always return false."
+
+ [DO]   Studio -> SQL editor:  set role anon; select count(*) from students;
+ [SHOW] 0
+ [SAY]  "Same query, no session, zero rows. That is the whole security claim,
+         demonstrated rather than asserted."
+
+ DO NOT open .env.local, API keys, or Studio Settings. Say "keys are in a
+ gitignored env file" and move on.
+
+
+================================================================================
+ PART 7 - Q&A BANK (answer in 2-3 sentences, then offer the file)
+================================================================================
+ Q  Why App Router?
+    Server Components render the roster next to the data; server actions give
+    mutations a typed server boundary with no hand-written API routes.
+    -> app/(app)/attendance/page.tsx, actions/attendance.ts
+
+ Q  Where is auth enforced?
+    Three layers: proxy refresh, requireAdmin() as the real gate, RLS as the
+    database guarantee.
+    -> proxy.ts, lib/auth.ts, migration
+
+ Q  Why security definer on is_admin()?
+    profiles only lets a user read their own row; without definer the policy's
+    own check gets filtered by RLS and returns false. search_path is pinned
+    against schema hijacking.
+
+ Q  Isn't shipping the anon key dangerous?
+    It identifies the project, it does not authorize. With no session every
+    table returns zero rows - I can show you that. service_role bypasses RLS and
+    lives only in a gitignored env file for a local script.
+
+ Q  How do you know the timestamp is real?
+    The form never sends it. A trigger stamps now() on insert, only when null,
+    and a CHECK refuses present/late without it.
+
+ Q  What if the teacher clicks Present twice?
+    Upsert on (student_id, attendance_date). Same row updated, timestamp
+    unchanged, no duplicate. A second row for the same day is a 409.
+
+ Q  Where is validation?
+    Zod in every action, and the same rules again as enums, CHECK, UNIQUE and
+    FKs in Postgres. Client attributes are convenience only.
+
+ Q  Why only one admin role?
+    Recorded scope decision in ADR 0003. Multi-role needs section ownership and
+    narrower policies; the schema already supports adding it.
+
+ Q  Walk me through marking present, end to end.
+    Form POST -> action -> requireAdmin -> Zod -> upsert -> trigger stamps ->
+    constraints and RLS -> revalidatePath -> server re-render.
+
+ Q  Duplicate LRN?
+    Postgres raises 23505, the action maps it to a field error, nothing inserts.
+
+ Q  Are there tests?
+    No - ticket T9 is open, and I will not claim otherwise. What I do run:
+    typecheck, lint, production build, a schema verification script that replays
+    the migration in an in-process Postgres, and a manual smoke test of all four
+    statuses plus the duplicate-day rejection.
+
+ Q  What breaks first at scale?
+    The attendance page loads a section's roster and counts in JS. At thousands
+    of rows that moves to SQL aggregation - the summary view already exists.
+
+ Q  What did the AI get wrong?
+    Session pages prerendered statically; proxy crashed when Supabase was down;
+    and the two integration bugs I described - NULL token columns and the
+    email-provider flag. Each one found by running it.
+
+ Q  Which skill changed a decision?
+    grilling forced the four scope questions before code. to-tickets forced the
+    vertical-slice order. codebase-design produced the single read module. None
+    of them wrote the code.
+
+ Q  What is NOT implemented?
+    Teacher accounts, subjects/grading, parent access, notifications, uploads,
+    realtime, automated tests. Say it before they find it.
+
+ Q  How would you deploy this for real?
+    Run the migration on hosted Supabase, create the admin through the dashboard
+    or a service-role script, set three env vars, keep signup disabled. No code
+    change - only environment. I actually tested that path end to end.
+
+ Q  Why is Docker required - why not just the cloud?
+    The guidelines require a self-hosted Supabase in Docker, and it also means
+    the demo works offline. The hosted copy exists as a backup and as proof the
+    schema deploys elsewhere.
+
+
+================================================================================
+ PART 8 - PHRASES TO AVOID / THINGS TO ADMIT FIRST
+================================================================================
+ AVOID: "The AI did everything."
+   SAY: "I directed the agent, and I verified every layer myself."
+ AVOID: "We have tests."
+   SAY: "No automated tests yet - T9 is open. Here is what I do verify."
+ AVOID: "It's deployed."
+   SAY: "It runs locally against self-hosted Supabase in Docker; a hosted copy
+        was used to prove the schema deploys."
+ AVOID: claiming a skill generated a file.
+   SAY: "This skill produced the process/format; the agent wrote the code."
+ ADMIT FIRST, before they ask:
+   - no test suite (T9 open)
+   - single admin role by design
+   - attendance counts computed in the page, view exists but unused
+
+
+================================================================================
+ PART 9 - BACKUP PLAN
+================================================================================
+ 1. Play the 3-minute recording.
+ 2. Show screenshots: dashboard, students + LRN error, attendance with time in,
+    reports, Studio table, pg_policies, migration file.
+ 3. If Docker dies: `npm run verify:schema` still proves the migration runs
+    (in-process Postgres, no Docker). Show that, then the hosted copy.
+ 4. If everything dies: docs/erd.md + the migration file on GitHub.
+ Never spend more than 60 seconds fighting a live failure. Switch, apologise
+ once, continue.
+
+
+================================================================================
+ PART 10 - CHEAT CARD (memorise these numbers)
+================================================================================
+ 4 tables ......... sections, students, attendance_records, profiles
+ 4 policies ....... 3 x is_admin() + 1 own-profile read
+ 4 RLS tables ..... all four, relrowsecurity = true
+ 3 triggers ....... stamp time, set updated_at, create profile on new auth user
+ 3 sections ....... Rizal G7, Bonifacio G8, Mabini G9
+ 12 students ...... seeded
+ 1 admin .......... admin@school.test
+ 12 skills ........ installed in .opencode/skills
+ 12 containers .... supabase start
+ 17 ............... Postgres major version
+ 422 .............. signup_disabled
+ 409 .............. duplicate same-day attendance
+ 23505 ............ duplicate LRN
+ 100 .............. total points; 25 demo, 20 skills, 15 arch, 15 workflow,
+                    15 code/Q&A, 10 db+security
+
+================================================================================
+ END OF SCRIPT
+================================================================================
