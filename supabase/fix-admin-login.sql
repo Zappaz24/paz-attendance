@@ -36,27 +36,11 @@ begin
 end
 $$;
 
--- 2. keep it from happening again: default '' on the same columns
-do $$
-declare
-  col text;
-begin
-  for col in
-    select column_name
-    from information_schema.columns
-    where table_schema = 'auth'
-      and table_name   = 'users'
-      and is_nullable  = 'YES'
-      and data_type   in ('text', 'character varying')
-      and (
-        column_name like '%token%'
-        or column_name in ('email_change', 'phone_change', 'email_otp')
-      )
-  loop
-    execute format('alter table auth.users alter column %I set default %L', col, '');
-  end loop;
-end
-$$;
+-- Note: do NOT try to `alter table auth.users ... set default` — the SQL Editor
+-- connects as `postgres`, which can write rows but does not own the table
+-- (supabase_auth_admin does), so DDL there fails with
+--   42501: must be owner of table users
+-- Only the existing row needs repairing anyway.
 
 -- 3. what is still NULL on the admin row (want: no rows, or only timestamps)
 select key as still_null
