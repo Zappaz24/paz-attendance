@@ -53,6 +53,30 @@ set encrypted_password = crypt('admin12345', gen_salt('bf')),
     updated_at         = now()
 where lower(email) = 'admin@school.test';
 
+-- 2b. GoTrue reads these columns into plain Go strings, so NULL makes every
+--     auth request for this user fail with "Database error querying schema".
+--     Columns are discovered at runtime so this works across schema versions.
+do $$
+declare
+  col text;
+begin
+  for col in
+    select column_name
+    from information_schema.columns
+    where table_schema = 'auth'
+      and table_name   = 'users'
+      and is_nullable  = 'YES'
+      and data_type   in ('text', 'character varying')
+      and (
+        column_name like '%token%'
+        or column_name in ('email_change', 'phone_change', 'email_otp')
+      )
+  loop
+    execute format('update auth.users set %I = %L where %I is null', col, '', col);
+  end loop;
+end
+$$;
+
 -- 3. the email identity (GoTrue expects one per provider)
 insert into auth.identities (
   id,
