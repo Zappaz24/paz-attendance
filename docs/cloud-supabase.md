@@ -102,7 +102,22 @@ Dashboard → **Authentication → Users → Add user**:
 The `on_auth_user_created` trigger inserts the `profiles` row with `role = admin`
 automatically, so the account is immediately usable.
 
-**Option C — Codespaces one command**
+**Option C — SQL only (no secret key, no dashboard digging)**
+
+Paste `supabase/create-admin.sql` into Dashboard → **SQL Editor**:
+
+<https://raw.githubusercontent.com/Zappaz24/paz-attendance/main/supabase/create-admin.sql>
+
+It writes what the dashboard writes: a confirmed `auth.users` row with a
+bcrypt-hashed password, the `auth.identities` email identity, and the
+`profiles` row with `role = 'admin'`. Idempotent — a second run just resets the
+password. The script ends with a `select` that must return:
+
+| email | full_name | role | confirmed |
+|---|---|---|---|
+| admin@school.test | School Admin | admin | true |
+
+**Option D — Codespaces one command**
 
 ```bash
 bash scripts/codespace-setup.sh --cloud
