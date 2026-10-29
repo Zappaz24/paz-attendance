@@ -137,6 +137,11 @@ Open the forwarded port 3000 URL, sign in, then run the 10-step smoke test in
 
 If you see "Could not load this screen" → schema not applied (step 2).
 If login says "Invalid email or password" → no user (step 4) or wrong password.
+If login returns `500 Database error querying schema` → the user was created by
+SQL, not the dashboard, so the `auth.users` token columns are `NULL` and GoTrue
+cannot read the row. Run `supabase/fix-admin-login.sql` (§4 option C does this
+automatically). `alter table auth.users …` cannot be used to prevent it: the SQL
+Editor is not the owner of the auth schema.
 If you land on `/login?error=not-admin` → the user exists but has no `profiles`
 row; re-run step 4 option A, or insert the row in the SQL editor:
 
