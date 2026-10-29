@@ -12,6 +12,7 @@
 | `review.md` | Two-axis code review + residual risks |
 | `demo-setup.md` | Install Docker/Supabase, run, demo script, troubleshooting |
 | `codespace.md` | **Run everything in GitHub Codespaces** (no local Docker), including the six non-negotiable rules |
+| `cloud-supabase.md` | Point the app at a **hosted** Supabase project (no Docker); key formats, SQL apply, signup lock-down |
 | `defense-qa.md` | 16 rehearsal questions + grading map |
 | `adr/` | Three decisions with trade-offs |
 

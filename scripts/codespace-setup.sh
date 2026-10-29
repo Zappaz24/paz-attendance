@@ -2,14 +2,18 @@
 #
 # PAZ Attendance — one-shot setup for GitHub Codespaces / devcontainer.
 #
-#   bash scripts/codespace-setup.sh
+#   bash scripts/codespace-setup.sh            # local Supabase via Docker
+#   bash scripts/codespace-setup.sh --cloud    # hosted project from .env.local
 #
-# Does, in order:
+# Local mode does, in order:
 #   1. verifies Docker + Node
 #   2. installs npm dependencies (if missing)
 #   3. starts the local Supabase stack (idempotent)
 #   4. writes .env.local from `supabase status`
 #   5. creates the admin account (admin@school.test / admin12345)
+#
+# Cloud mode skips Docker and the local stack entirely: it validates the hosted
+# project in .env.local and creates the admin through the service-role key.
 #
 # Safe to re-run: an existing stack is reused and .env.local is backed up.
 set -euo pipefail
@@ -19,6 +23,50 @@ note() { printf '    %s\n' "$1"; }
 fail() { printf '\nERROR: %s\n' "$1" >&2; exit 1; }
 
 cd "$(dirname "$0")/.."
+
+# --------------------------------------------------------------- cloud mode --
+cloud_mode() {
+  step "Hosted Supabase (cloud) mode — Docker is not used"
+  [ -f .env.local ] || fail "No .env.local. Create it first — see docs/cloud-supabase.md."
+
+  set -a
+  # shellcheck disable=SC1091
+  . ./.env.local
+  set +a
+
+  [ -n "${NEXT_PUBLIC_SUPABASE_URL:-}" ] || fail "NEXT_PUBLIC_SUPABASE_URL is empty in .env.local."
+  [ -n "${NEXT_PUBLIC_SUPABASE_ANON_KEY:-}" ] || fail "NEXT_PUBLIC_SUPABASE_ANON_KEY is empty in .env.local."
+
+  case "$NEXT_PUBLIC_SUPABASE_URL" in
+    *rest/v1*) fail "NEXT_PUBLIC_SUPABASE_URL must be the project URL (https://<ref>.supabase.co), not the /rest/v1/ endpoint." ;;
+  esac
+
+  note "Project: $NEXT_PUBLIC_SUPABASE_URL"
+
+  if [ -z "${SUPABASE_SERVICE_ROLE_KEY:-}" ]; then
+    cat <<'MSG'
+    SUPABASE_SERVICE_ROLE_KEY is empty — skipping admin creation.
+
+    Either:
+      a) Dashboard -> Project Settings -> API Keys -> Secret keys -> copy sb_secret_...
+         paste it into .env.local, then re-run this script; or
+      b) Dashboard -> Authentication -> Users -> "Add user" (email + password,
+         auto-confirm). The auth trigger creates the admin profile row for you.
+
+    Also make sure the schema is applied and public sign-up is OFF:
+      docs/cloud-supabase.md step 3 and 4.
+MSG
+    exit 0
+  fi
+
+  node --env-file=.env.local scripts/create-admin.mjs
+  printf '\nDone. Start the app with: npm run dev\n'
+  exit 0
+}
+
+if [ "${1:-}" = "--cloud" ]; then
+  cloud_mode
+fi
 
 # ---------------------------------------------------------------- 1. Docker --
 step "Checking Docker"

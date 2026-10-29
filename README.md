@@ -78,6 +78,17 @@ Open <http://localhost:3000>, sign in, and the seeded roster (3 sections,
 
 Full walkthrough, screenshots checklist and troubleshooting: `docs/demo-setup.md`.
 
+### Option C — Hosted Supabase (no Docker at all)
+
+Point the same app at a cloud project: strip `/rest/v1/` from the project URL,
+use the **secret** key for `SUPABASE_SERVICE_ROLE_KEY`, apply the migration,
+disable public sign-up. Full walkthrough with the three common mistakes:
+[`docs/cloud-supabase.md`](docs/cloud-supabase.md).
+
+```bash
+bash scripts/codespace-setup.sh --cloud   # validates .env.local, creates the admin
+```
+
 ### Useful scripts
 
 | Command | Purpose |
